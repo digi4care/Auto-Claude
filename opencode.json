@@ -1,0 +1,20 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [
+    "home/digi4care/.opencode/ai_docs/instructions-beads-workflow.md",
+    "home/digi4care/.opencode/ai_docs/instructions-test-workflow.md",
+    "home/digi4care/.opencode/ai_docs/documentation-opencode.md"
+  ],
+  "permission": {
+    "bash": {
+      "rm *": "ask",
+      "rm -rf *": "ask",
+      "rmdir *": "ask",
+      "rm -r *": "ask"
+    },
+    "edit": {
+      ".opencode/ai_docs/plan/*.md": "ask",
+      "docs/plan/": "ask"
+    }
+  }
+}
