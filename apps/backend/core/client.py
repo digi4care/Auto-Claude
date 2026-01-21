@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from core.cli_tools import get_default_cli_tool, get_cli_tool_instance
+from core.cli_tools import ClaudeCodeAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -730,7 +731,7 @@ def create_client(
     max_thinking_tokens: int | None = None,
     output_format: dict | None = None,
     agents: dict | None = None,
-) -> ClaudeSDKClient:
+) -> Any:
     """
     Create a Claude Agent SDK client with multi-layered security.
 
@@ -753,12 +754,14 @@ def create_client(
                       Use {"type": "json_schema", "schema": Model.model_json_schema()}
                       See: https://platform.claude.com/docs/en/agent-sdk/structured-outputs
         agents: Optional dict of subagent definitions for SDK parallel execution.
-               Format: {"agent-name": {"description": "...", "prompt": "...",
-                        "tools": [...], "model": "inherit"}}
-               See: https://platform.claude.com/docs/en/agent-sdk/subagents
+                Format: {"agent-name": {"description": "...", "prompt": "...",
+                         "tools": [...], "model": "inherit"}}
+                See: https://platform.claude.com/docs/en/agent-sdk/subagents
 
     Returns:
-        Configured ClaudeSDKClient
+        ClaudeSDKClient or CLI tool adapter supporting async context manager
+        - If CLI_TOOL=claude or not set: Returns ClaudeSDKClient
+        - If CLI_TOOL=opencode: Returns ClaudeCodeAdapter (wrapper for SDK)
 
     Raises:
         ValueError: If agent_type is not found in AGENT_CONFIGS
@@ -769,6 +772,53 @@ def create_client(
     3. Security hooks - Bash commands validated against an allowlist
        (see security.py for ALLOWED_COMMANDS)
     4. Tool filtering - Each agent type only sees relevant tools (prevents misuse)
+    """
+    # Check CLI_TOOL environment variable for tool selection
+    cli_tool_name = os.environ.get("CLI_TOOL", "claude").lower()
+
+    if cli_tool_name == "opencode":
+        # Use Opencode CLI via Claude adapter wrapper
+        logger.info("Using Opencode CLI tool")
+        tool = get_cli_tool_instance("claude")
+        # Configure tool for this session
+        tool.send_message(
+            message="",  # Will be set on actual message
+            project_dir=project_dir,
+            spec_dir=spec_dir,
+            model=model,
+            agent_type=agent_type,
+            max_thinking_tokens=max_thinking_tokens,
+        )
+        return tool
+
+    # Default: Use Claude SDK directly (current implementation)
+    # Note: Agents can use either ClaudeSDKClient or ClaudeCodeAdapter
+    # Both support async context manager protocol
+    return _create_claude_sdk_client(
+        project_dir=project_dir,
+        spec_dir=spec_dir,
+        model=model,
+        agent_type=agent_type,
+        max_thinking_tokens=max_thinking_tokens,
+        output_format=output_format,
+        agents=agents,
+    )
+
+
+def _create_claude_sdk_client(
+    project_dir: Path,
+    spec_dir: Path,
+    model: str,
+    agent_type: str = "coder",
+    max_thinking_tokens: int | None = None,
+    output_format: dict | None = None,
+    agents: dict | None = None,
+) -> ClaudeSDKClient:
+    """
+    Internal function to create Claude SDK client.
+
+    Extracted from create_client() to support CLI tool selection.
+    This contains the original implementation for Claude SDK.
     """
     oauth_token = require_auth_token()
     # Ensure SDK can access it via its expected env var
