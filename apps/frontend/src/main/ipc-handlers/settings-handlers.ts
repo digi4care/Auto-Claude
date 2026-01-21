@@ -281,6 +281,49 @@ export function registerSettingsHandlers(
   );
 
   // ============================================
+  // CLI Tool Selection
+  // ============================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.SETTINGS_GET_CLI_TOOL_SELECTION,
+    async (): Promise<IPCResult<{ selectedTool: 'auto' | 'claude' | 'opencode'; autoDetect: boolean }>> => {
+      try {
+        const settings = readSettingsFile(settingsPath);
+        const selectedTool = settings.cliTool || 'auto';
+        return {
+          success: true,
+          data: {
+            selectedTool,
+            autoDetect: selectedTool === 'auto',
+          },
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to get CLI tool selection',
+        };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.SETTINGS_SET_CLI_TOOL,
+    async (event: Electron.IpcMainInvokeEvent, tool: 'auto' | 'claude' | 'opencode'): Promise<IPCResult<void>> => {
+      try {
+        const settings = readSettingsFile(settingsPath);
+        settings.cliTool = tool;
+        writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+        return { success: true };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to set CLI tool',
+        };
+      }
+    }
+  );
+
+  // ============================================
   // Dialog Operations
   // ============================================
 

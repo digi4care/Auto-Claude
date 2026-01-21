@@ -5,7 +5,8 @@ import type {
   IPCResult,
   SourceEnvConfig,
   SourceEnvCheckResult,
-  ToolDetectionResult
+  ToolDetectionResult,
+  CliToolSelection
 } from '../../shared/types';
 
 export interface SettingsAPI {
@@ -20,6 +21,10 @@ export interface SettingsAPI {
     gh: ToolDetectionResult;
     claude: ToolDetectionResult;
   }>>;
+
+  // CLI Tool Selection
+  getCliToolSelection: () => Promise<IPCResult<CliToolSelection>>;
+  setCliTool: (tool: 'auto' | 'claude' | 'opencode') => Promise<IPCResult<void>>;
 
   // App Info
   getAppVersion: () => Promise<string>;
@@ -51,6 +56,12 @@ export const createSettingsAPI = (): SettingsAPI => ({
     claude: ToolDetectionResult;
   }>> =>
     ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET_CLI_TOOLS_INFO),
+
+  // CLI Tool Selection
+  getCliToolSelection: (): Promise<IPCResult<CliToolSelection>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET_CLI_TOOL_SELECTION),
+  setCliTool: (tool: 'auto' | 'claude' | 'opencode'): Promise<IPCResult<void>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET_CLI_TOOL, tool),
 
   // App Info
   getAppVersion: (): Promise<string> =>

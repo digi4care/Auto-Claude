@@ -274,6 +274,8 @@ export interface AppSettings {
   _migratedDefaultModelSync?: boolean;
   // Language preference for UI (i18n)
   language?: SupportedLanguage;
+  // CLI Tool Selection
+  cliTool?: 'auto' | 'claude' | 'opencode';
   // Developer tools preferences
   preferredIDE?: SupportedIDE;
   customIDEPath?: string;      // For 'custom' IDE
@@ -281,7 +283,7 @@ export interface AppSettings {
   customTerminalPath?: string; // For 'custom' terminal
   // YOLO mode: invoke Claude with --dangerously-skip-permissions flag
   dangerouslySkipPermissions?: boolean;
-  // Anonymous error reporting (Sentry) - enabled by default to help improve the app
+  // Anonymous error reporting (Sentry) - enabled by default to help improve app
   sentryEnabled?: boolean;
 }
 

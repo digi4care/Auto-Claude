@@ -300,6 +300,15 @@ export interface ElectronAPI {
     claude: import('./cli').ToolDetectionResult;
   }>>;
 
+  // CLI Tool Selection
+  getCliToolSelection: () => Promise<IPCResult<CliToolSelection>>;
+  setCliTool: (tool: 'auto' | 'claude' | 'opencode') => Promise<IPCResult<void>>;
+}
+
+export interface CliToolSelection {
+  selectedTool: 'auto' | 'claude' | 'opencode';
+  autoDetect: boolean;
+
   // API Profile management (custom Anthropic-compatible endpoints)
   getAPIProfiles: () => Promise<IPCResult<ProfilesFile>>;
   saveAPIProfile: (profile: Omit<APIProfile, 'id' | 'createdAt' | 'updatedAt'>) => Promise<IPCResult<APIProfile>>;

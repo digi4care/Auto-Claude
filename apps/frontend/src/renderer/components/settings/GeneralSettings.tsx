@@ -1,7 +1,6 @@
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useEffect, useState } from 'react';
 import { Label } from '../ui/label';
-import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Switch } from '../ui/switch';
 import { SettingsSection } from './SettingsSection';
@@ -19,8 +18,10 @@ import type {
   FeatureThinkingConfig,
   ModelTypeShort,
   ThinkingLevel,
-  ToolDetectionResult
+  ToolDetectionResult,
+  CliToolSelection
 } from '../../../shared/types';
+import type { CliToolSelection as CliToolSelectionType } from '../../../shared/types/ipc';
 
 interface GeneralSettingsProps {
   settings: AppSettings;
@@ -92,6 +93,37 @@ function ToolDetectionDisplay({ info, isLoading, t }: ToolDetectionDisplayProps)
  */
 export function GeneralSettings({ settings, onSettingsChange, section }: GeneralSettingsProps) {
   const { t } = useTranslation('settings');
+
+  // CLI Tool Selection state
+  const [cliToolSelection, setCliToolSelection] = useState<CliToolSelectionType | null>(null);
+  const [isLoadingCliTool, setIsLoadingCliTool] = useState(false);
+
+  // Fetch CLI tool selection on mount
+  useEffect(() => {
+    window.electronAPI.getCliToolSelection()
+      .then((result: { success: boolean; data?: CliToolSelectionType }) => {
+        if (result.success && result.data) {
+          setCliToolSelection(result.data);
+        }
+      })
+      .catch((error: unknown) => {
+        console.error('Failed to fetch CLI tool selection:', error);
+      });
+  }, []);
+
+  const handleToolChange = useCallback(async (tool: 'auto' | 'claude' | 'opencode') => {
+    setIsLoadingCliTool(true);
+    try {
+      await window.electronAPI.setCliTool(tool);
+      setCliToolSelection({ selectedTool: tool, autoDetect: tool === 'auto' });
+      onSettingsChange({ ...settings, cliTool: tool });
+    } catch (error) {
+      console.error('Failed to set CLI tool:', error);
+    } finally {
+      setIsLoadingCliTool(false);
+    }
+  }, [settings, onSettingsChange]);
+
   const [toolsInfo, setToolsInfo] = useState<{
     python: ToolDetectionResult;
     git: ToolDetectionResult;
@@ -123,6 +155,40 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
   if (section === 'agent') {
     return (
       <div className="space-y-8">
+        {/* CLI Tool Selection */}
+        <SettingsSection
+          title="CLI Tool Selection"
+          description="Choose which AI coding tool to use for Auto Claude operations. Default: Claude Code."
+        >
+          <div className="space-y-4">
+            <Label htmlFor="cliTool" className="text-sm font-medium text-foreground">
+              Selected CLI Tool
+            </Label>
+            <p className="text-sm text-muted-foreground mb-3">
+              Select which CLI tool Auto Claude should use. The selected tool will be used for all AI interactions.
+            </p>
+            <Select
+              value={settings.cliTool || 'auto'}
+              onValueChange={handleToolChange}
+              disabled={isLoadingCliTool}
+            >
+              <SelectTrigger id="cliTool" className="w-full max-w-md">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">Auto-Detect (Recommended)</SelectItem>
+                <SelectItem value="claude">Claude Code (Default)</SelectItem>
+                <SelectItem value="opencode">Opencode</SelectItem>
+              </SelectContent>
+            </Select>
+            {cliToolSelection && cliToolSelection.autoDetect && (
+              <p className="text-xs text-muted-foreground mt-2">
+                <span className="font-medium">Current:</span> {settings.cliTool === 'auto' ? 'Auto-Detect' : settings.cliTool === 'claude' ? 'Claude Code' : settings.cliTool}
+              </p>
+            )}
+          </div>
+        </SettingsSection>
+
         {/* Agent Profile Selection */}
         <AgentProfileSettings />
 
@@ -180,7 +246,7 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
 
                 return (
                   <div key={feature} className="space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between max-w-md">
                       <Label className="text-sm font-medium text-foreground">
                         {FEATURE_LABELS[feature].label}
                       </Label>
@@ -244,97 +310,35 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
     );
   }
 
-  // paths section
-  return (
-    <SettingsSection
-      title={t('general.paths')}
-      description={t('general.pathsDescription')}
-    >
-      <div className="space-y-6">
-        <div className="space-y-3">
-          <Label htmlFor="pythonPath" className="text-sm font-medium text-foreground">{t('general.pythonPath')}</Label>
-          <p className="text-sm text-muted-foreground">{t('general.pythonPathDescription')}</p>
-          <Input
-            id="pythonPath"
-            placeholder={t('general.pythonPathPlaceholder')}
-            className="w-full max-w-lg"
-            value={settings.pythonPath || ''}
-            onChange={(e) => onSettingsChange({ ...settings, pythonPath: e.target.value })}
-          />
-          {!settings.pythonPath && (
-            <ToolDetectionDisplay
-              info={toolsInfo?.python || null}
-              isLoading={isLoadingTools}
-              t={t}
-            />
-          )}
-        </div>
-        <div className="space-y-3">
-          <Label htmlFor="gitPath" className="text-sm font-medium text-foreground">{t('general.gitPath')}</Label>
-          <p className="text-sm text-muted-foreground">{t('general.gitPathDescription')}</p>
-          <Input
-            id="gitPath"
-            placeholder={t('general.gitPathPlaceholder')}
-            className="w-full max-w-lg"
-            value={settings.gitPath || ''}
-            onChange={(e) => onSettingsChange({ ...settings, gitPath: e.target.value })}
-          />
-          {!settings.gitPath && (
-            <ToolDetectionDisplay
-              info={toolsInfo?.git || null}
-              isLoading={isLoadingTools}
-              t={t}
-            />
-          )}
-        </div>
-        <div className="space-y-3">
-          <Label htmlFor="githubCLIPath" className="text-sm font-medium text-foreground">{t('general.githubCLIPath')}</Label>
-          <p className="text-sm text-muted-foreground">{t('general.githubCLIPathDescription')}</p>
-          <Input
-            id="githubCLIPath"
-            placeholder={t('general.githubCLIPathPlaceholder')}
-            className="w-full max-w-lg"
-            value={settings.githubCLIPath || ''}
-            onChange={(e) => onSettingsChange({ ...settings, githubCLIPath: e.target.value })}
-          />
-          {!settings.githubCLIPath && (
-            <ToolDetectionDisplay
-              info={toolsInfo?.gh || null}
-              isLoading={isLoadingTools}
-              t={t}
-            />
-          )}
-        </div>
-        <div className="space-y-3">
-          <Label htmlFor="claudePath" className="text-sm font-medium text-foreground">{t('general.claudePath')}</Label>
-          <p className="text-sm text-muted-foreground">{t('general.claudePathDescription')}</p>
-          <Input
-            id="claudePath"
-            placeholder={t('general.claudePathPlaceholder')}
-            className="w-full max-w-lg"
-            value={settings.claudePath || ''}
-            onChange={(e) => onSettingsChange({ ...settings, claudePath: e.target.value })}
-          />
-          {!settings.claudePath && (
-            <ToolDetectionDisplay
-              info={toolsInfo?.claude || null}
-              isLoading={isLoadingTools}
-              t={t}
-            />
-          )}
-        </div>
-        <div className="space-y-3">
-          <Label htmlFor="autoBuildPath" className="text-sm font-medium text-foreground">{t('general.autoClaudePath')}</Label>
-          <p className="text-sm text-muted-foreground">{t('general.autoClaudePathDescription')}</p>
-          <Input
-            id="autoBuildPath"
-            placeholder={t('general.autoClaudePathPlaceholder')}
-            className="w-full max-w-lg"
-            value={settings.autoBuildPath || ''}
-            onChange={(e) => onSettingsChange({ ...settings, autoBuildPath: e.target.value })}
-          />
-        </div>
+  if (section === 'paths') {
+    return (
+      <div className="space-y-8">
+        <SettingsSection
+          title={t('general.pathsTitle')}
+          description={t('general.pathsDescription')}
+        >
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-foreground">{t('general.python')}</Label>
+              <ToolDetectionDisplay info={toolsInfo?.python || null} isLoading={isLoadingTools} t={t} />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-foreground">{t('general.git')}</Label>
+              <ToolDetectionDisplay info={toolsInfo?.git || null} isLoading={isLoadingTools} t={t} />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-foreground">{t('general.gh')}</Label>
+              <ToolDetectionDisplay info={toolsInfo?.gh || null} isLoading={isLoadingTools} t={t} />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-foreground">{t('general.claude')}</Label>
+              <ToolDetectionDisplay info={toolsInfo?.claude || null} isLoading={isLoadingTools} t={t} />
+            </div>
+          </div>
+        </SettingsSection>
       </div>
-    </SettingsSection>
-  );
+    );
+  }
+
+  return null;
 }
