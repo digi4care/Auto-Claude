@@ -143,6 +143,7 @@ python run.py --spec 001 --merge
 ```
 
 See [guides/CLI-USAGE.md](guides/CLI-USAGE.md) for complete CLI documentation.
+See [guides/CLI-TOOLS.md](guides/CLI-TOOLS.md) for CLI tool selection guide.
 
 ---
 
