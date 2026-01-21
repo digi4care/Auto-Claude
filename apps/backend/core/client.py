@@ -24,6 +24,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from core.cli_tools import get_default_cli_tool, get_cli_tool_instance
+
 logger = logging.getLogger(__name__)
 
 # =============================================================================

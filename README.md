@@ -146,6 +146,44 @@ See [guides/CLI-USAGE.md](guides/CLI-USAGE.md) for complete CLI documentation.
 
 ---
 
+## CLI Tools
+
+Auto Claude supports multiple CLI tools for AI interactions:
+
+### Claude Code CLI (Default)
+
+The primary CLI tool, powered by Anthropic's Claude AI.
+
+```bash
+# Install Claude Code CLI
+npm install -g @anthropic-ai/claude-code
+
+# Or via Homebrew (macOS)
+brew install claude-code
+```
+
+### Opencode CLI
+
+Alternative CLI tool with different capabilities.
+
+```bash
+# Set Opencode as your default CLI tool
+export CLI_TOOL=opencode
+
+# Or set in .auto-claude/.env
+echo "CLI_TOOL=opencode" >> .auto-claude/.env
+```
+
+### Tool Selection
+
+You can select your preferred CLI tool:
+
+- **Environment Variable**: Set `CLI_TOOL=claude` or `CLI_TOOL=opencode`
+- **Project Config**: Add to your `.auto-claude/.env` file
+- **Default**: Uses Claude Code if not specified
+
+---
+
 ## Development
 
 Want to build from source or contribute? See [CONTRIBUTING.md](CONTRIBUTING.md) for complete development setup instructions.
